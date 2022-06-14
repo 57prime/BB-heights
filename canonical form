@@ -1,0 +1,30 @@
+frame=shadowbox]
+from sage.schemes.riemann_surfaces.riemann_surface import RiemannSurface
+R.<x,y> = QQ[]
+f =  -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x
+
+S = RiemannSurface(f)
+M = S.period_matrix()
+Omega1 = M[[0,1,2],[0,1,2]]
+Omega2 = M[[0,1,2],[3,4,5]]
+A = Omega1.apply_map(real)
+B = Omega1.apply_map(imag)
+tau = S.riemann_matrix()
+Omega1bar= A-B*I
+Imtau = tau.apply_map(imag)
+RieSecBil = Omega1bar*Imtau*Omega1.transpose()
+RieSecBil
+[ 8.14058999836226 - 4.44089209850063e-16*I -2.71111012021317 - 9.21762666195036e-14*I -5.21995559097122 - 5.85642645489770e-14*I]
+[-2.71111012021315 + 6.52811138479592e-14*I  8.66278158093292 + 8.32667268468867e-14*I  5.65493670273040 + 1.56541446472147e-13*I]
+[-5.21995559097118 + 1.45994327738208e-14*I  5.65493670273037 - 1.75831571525009e-14*I  10.7557438794561 + 1.18932641512970e-14*I]
+
+w11 = RieSecBil[0][0]
+w1y = RieSecBil[0][1]
+w1x = RieSecBil[0][2]
+wyy = RieSecBil[1][1]
+wyx = RieSecBil[1][2]
+wxx = RieSecBil[2][2]
+k = (wyx-w1x*w1y/w11)/(wyy-w1y*w1y/w11)
+norm1 = RieSecBil[0][0]**(1/2)
+norm2 = (wyy-(2*w1y*w1y/w11)+w1y*w1y/w11)**(1/2)
+norm3 = (wxx+w1x*w1x/w11+k*k*wyy+k*k*w1y*w1y/w11-2*w1x*w1x/w11-2*k*wyx+2*k*w1y*w1x/w11+2*k*w1x*w1y/w11-2*k*w1x*w1y/w11-2*k*k*w1y*w1y/w11)**(1/2)
