@@ -1,0 +1,65 @@
+C<I> := ComplexField(30);
+Cxy<x, y> := PolynomialRing(RationalField(), 2);
+f := -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x;    //defining polynomial
+X := RiemannSurface(f : Precision:=30);    //riemann surface
+tau:=SmallPeriodMatrix(X);
+Imtau:=MatrixIm(tau);
+detimtau:=Determinant(Imtau);
+
+//the following rows are rows of the big period matrix
+tau1:=[-0.0756487726827658975623807266149 ,0.828507935186700709139824389302,
+    0.486565855891405863290312449179 ,- 0.0753194443604481461426310259273,
+    0.532385049449013502234878708914 , 0.231433843472050162680353039649];
+tau2:=[0.486565855891405863290312449179, - 0.0753194443604481461426310259273,
+    0.500584921111822623585859133424, + 0.488740800373239742539460301357,
+    0.137880100924435244693062999773, - 0.0570373001175851400662331352196];
+tau3:=[0.532385049449013502234878708914, + 0.231433843472050162680353039649,
+    0.137880100924435244693062999773, - 0.0570373001175851400662331352196,
+    0.689717878372433609278715552080, + 0.692647743504703135897856925333];
+
+MatrixIm := function(M)    //take the imaginary part of a matrix
+N := ZeroMatrix(C, Nrows(M), Ncols(M));
+for i in [1..Nrows(M)] do
+for j in [1..Ncols(M)] do
+N[i,j] := Imaginary(M[i,j]);
+end for;
+end for;
+return N;
+end function;
+
+rectan:=Matrix([[1.0,0.0,0.0,0.0,0.0,0.0],    [0.0,0.0,1.0,0.0,0.0,0.0],
+[0.0,0.0,0.0,0.0,1.0,0.0],
+tau1,tau2,tau3]);
+volume:=Abs(Determinant(rectan));
+
+TorusTheta := function(V);    //the function ||theta|| on a torus
+char:=Matrix([[0],[0],[0],[0],[0],[0]]);
+myabstheta:=Abs(Theta(char, V, tau));
+myexponent:=-3.141592653589*Transpose(MatrixIm(V))*(Imtau^-1)*MatrixIm(V);
+return Abs(Exp(myexponent[1,1])*myabstheta*detimtau^(1/4));
+end function;
+
+A:=Matrix(C,3,1,[0,0,1]);
+B:=Matrix(C,3,1,[0,1,0]);
+C:=Matrix(C,3,1,[1,0,0]);
+D:=Transpose(Matrix(tau[1]));
+E:=Transpose(Matrix(tau[2]));
+F:=Transpose(Matrix(tau[3]));
+
+c:=19;    \\the Riemann sum
+result:=0;
+for ii in [1..2] do 
+for jj in [1..c] do
+for kk in [1..c] do
+for ll in [1..c] do
+for mm in [1..c] do
+for nn in [1..c] do
+vector:=(ii/c)*A+(jj/c)*B+(kk/c)*C+(ll/c)*D+(mm/c)*E+(nn/c)*F;
+result:=result+Log(TorusTheta(vector))/(c^6);
+end for;
+end for;
+end for;
+end for;
+end for;
+end for;
+result;
