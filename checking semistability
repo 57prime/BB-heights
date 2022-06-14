@@ -1,0 +1,108 @@
+from collections import defaultdict
+PP.<x,y,z> = ProjectiveSpace(QQ,2)
+Poly.<U,V> = PolynomialRing(ZZ, 2)
+RR.<X, Y, Z> = PolynomialRing(ZZ, 3)
+C = Curve(-x^3*y+x^2*y^2-x*y^2*z+y^3*z+x^2*z^2+x*z^3, PP)
+inj1 = Poly.hom([X, Y], RR)
+
+
+def IsDegree1(I):    #checking the ideal I has degree 1 generators
+    out = True
+    for f in I.gens():    
+        if not f.degree() == 1:
+            out = False
+    return out
+
+
+def MyBadPrimes(C):    #finding out primes with bad reduction
+    f = C.defining_polynomial() 
+    RZ.<xZ,yZ,zZ> = PolynomialRing(ZZ, 3)
+    coeffs = f.coefficients()
+    dens = [c.denominator() for c in coeffs]
+    den = lcm(dens)
+    F = RZ(f*den)
+    Fx = F.derivative(xZ)
+    Fy = F.derivative(yZ)
+    Fz = F.derivative(zZ)
+    NaiveDisc = 1
+    for P in [[xZ,yZ,1],[xZ,1,zZ],[1,yZ,zZ]]:
+        I = ideal([g(P) for g in [F,Fx,Fy,Fz]])
+        G = I.groebner_basis()
+        n = G[len(G)-1]
+        NaiveDisc = lcm(n, NaiveDisc)
+    return [a[0] for a in factor(NaiveDisc)]
+
+
+def MyBadPoints(C, default_prime):     #CORE FUNCTION: finding out all singular points over certain prime number and the tangent lines
+    f = C.defining_polynomial() 
+    RZ.<xZ,yZ,zZ> = PolynomialRing(ZZ, 3)
+    coeffs = f.coefficients()
+    dens = [c.denominator() for c in coeffs]
+    den = lcm(dens)
+    F = RZ(f*den)
+    Fx = F.derivative(xZ)
+    Fy = F.derivative(yZ)
+    Fz = F.derivative(zZ)
+    Out = ['Dimention of singular locus is positive.']
+    GG = []               #list of associate primes (after field extension)
+    sing_set = []          #list of degree 2 parts of singular points after transition
+    factor_sing = []        #list of factorizations of degree 2 parts
+    degree = 1
+    SingDim = 0
+    found = False
+    while found == False:
+        Rp = RZ.change_ring(GF(default_prime^degree))
+        win = True
+        S.<u, v> = PolynomialRing(GF(default_prime^degree), 2)         
+        for P in [ [u, v, 1], [u, 1, v], [1, u, v] ]:             
+            affine_patch_map = RZ.hom(P, S)
+            I_2 = Ideal(S,[ affine_patch_map(g) for g in [F, Fx, Fy, Fz]])
+            G_2 = I_2.associated_primes()   
+            for I in G_2:
+                VV = I.gens()
+                if Set(VV).cardinality()==1:
+                    SingDim = 1
+            if SingDim == 1:
+                break
+            for I in G_2:
+                if IsDegree1(I) == False:
+                    win = False         #This means that the singular points don't have coordinates in this base field and we still need to extend it
+        if SingDim == 1:
+            break
+        Out = []
+        if win == True:         
+            for P in [ [u, v, 1], [u, 1, v], [1, u, v] ]:
+                affine_patch_map = RZ.hom(P, S)
+                I_2 = Ideal(S,[affine_patch_map(g) for g in [F, Fx, Fy, Fz]])
+                G_2 = I_2.associated_primes()
+                GG += G_2         
+                for AP in G_2:          #in this for loop, we find out the coordinate of singular points
+                    T.<x, y> = S.quotient(ideal(S, [w for w in AP.gens()]))
+                    Quot = T.cover()
+                    if Quot(1) == 0:
+                        continue
+                    for m in GF(default_prime^degree):      
+                        if Quot(u-m)==0:
+                            SingX = m
+                            break
+                    for n in GF(default_prime^degree):        
+                        if Quot(v-n)==0:
+                            SingY = n
+                            break
+                    Trans = S.hom([u+SingX, v+SingY])        
+                    change_to_S = RZ.hom(P, S)
+                    TranP = Trans(change_to_S(F))    #our curve after transition
+                    homog_part = defaultdict(TranP.parent())     #the following 4 lines help us to get the degree 2 part
+                    for coeff,monom in TranP:
+                        homog_part[monom.degree()] += coeff * monom
+                    sing_set.append(homog_part[2])
+            found = True
+            Out += GG
+            for w in sing_set:    #find out the singularity type
+                SS = S.change_ring(GF(default_prime^(2*degree)))
+                if w!=0:
+                    factor_sing.append(factor(SS(w)))
+                else:
+                    factor_sing.append('HIGHER_SINGULARITY')
+        else: degree += 1
+    return Out, factor_sing
