@@ -1,0 +1,125 @@
+C<I> := ComplexField(30);
+Cxy<x, y> := PolynomialRing(RationalField(), 2);
+f := -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x;    //defining polynomial
+X := RiemannSurface(f : Precision:=30);    //create riemann surface
+tau:=SmallPeriodMatrix(X);
+BP:=BasePoint(X);
+
+MatrixIm := function(M)    //take the imaginary part of a matrix
+N := ZeroMatrix(C, Nrows(M), Ncols(M));
+for i in [1..Nrows(M)] do
+for j in [1..Ncols(M)] do
+N[i,j] := Imaginary(M[i,j]);
+end for;
+end for;
+return N;
+end function;
+
+Imtau:=MatrixIm(tau);
+detimtau:=Determinant(Imtau);
+ThetaTranslate:=Matrix([[0.479250542651680186758281300774 - 0.00334176833187451614116524746349*I],
+[0.698684877508432322290935180841 + 0.199495723882563563098727841525*I],
+[0.00722266620787249384535143960054 - 0.0430102069343208149623250436805*I]]);
+
+normalizedtheta := function(D);    //compute ||theta||_{g-1} at D
+P := AbelJacobi(D);
+myinput := Matrix(P) - ThetaTranslate;
+char:=Matrix([[0],[0],[0],[0],[0],[0]]);
+myabstheta:=Abs(Theta(char, myinput, tau));
+myiminput:= MatrixIm(myinput);
+myexponent:=-3.141592653589*Transpose(myiminput)*(Imtau^-1)*myiminput;
+return Abs(Exp(myexponent[1,1])*myabstheta*detimtau^(1/4));
+end function;
+
+a:=1;
+b:=x^2-x;
+c:=-x^3;
+d:=x^2+x;
+cubic_unit:=-1/2+3^(1/2)/2*I;
+
+root:=function(u,v,i);    //solve the cubic equation with coefficients a, b, c and d.
+numa:=a;
+numb:=Evaluate(b,[u+v*I,0]);
+numc:=Evaluate(c,[u+v*I,0]);
+preuu:=(9*a*b*c-27*a^2*d-2*b^3)/(54*a^3);
+uu:=Evaluate(preuu,[u+v*I,0]);
+prevv:=Evaluate((3*(4*a*c^3-b^2*c^2-18*a*b*c*d+27*a^2*d^2+4*b^3*d)),[u+v*I,0]);
+vv:=(prevv^(1/2))/(18*a^2);
+m:=(uu-vv)^(1/3);
+if Abs(uu+vv) ge Abs(uu-vv) then
+m:=(uu+vv)^(1/3);
+end if;
+n:=0;
+if (Abs(m) ge 0.00001) then
+n:=(numb^2-3*numa*numc)/(9*numa*m);
+else n:=0;
+end if;
+result:=(cubic_unit^(i-1))*m+n*cubic_unit^(2*i-2)-(numb)/(3*numa);
+return result;
+end function;
+
+embedding:=function(u,v,i);    //find out the embedding index in Magma
+zz,pt1:=IsPoint(X,<[u,v],1>);
+zz,pt2:=IsPoint(X,<[u,v],2>);
+zz,pt3:=IsPoint(X,<[u,v],3>);
+if (Abs(Coordinates(pt1)[2]-root(u,v,i)) le 0.0001) then result:=1;    
+elif (Abs(Coordinates(pt2)[2]-root(u,v,i)) le 0.0001) then result:=2;
+elif (Abs(Coordinates(pt3)[2]-root(u,v,i)) le 0.0001) then result:=3;
+end if;
+return result;
+end function;
+
+theta_wrt_yi:=function(u,v,i);    //for a fixed point BP, evaluate theta_{g-1}(gP-Q) at the point Q=(Rex=u, Imx=v, index=i)
+zz, pt_in_cover_i:=IsPoint(X,<[u,v],embedding(u,v,i)>);
+targetdivisor:=Divisor([ BP,pt_in_cover_i],[3,-1]);
+return normalizedtheta(targetdivisor);
+end function;
+
+omega1 := function(u,v,i)    // first differential form, i denotes index of y           
+u:=u+0.000001;
+v:=v+0.000001;
+x:=u+v*I;
+y:=root(u,v,i);
+return 1/(-x^3+2*x^2*y-2*x*y+3*y^2);
+end function;
+
+omegax := function(u,v,i)    //second differential form, i denotes index of y
+u:=u+0.000001;
+v:=v+0.000001;
+x:=u+v*I;
+y:=root(u,v,i);
+return x/(-x^3+2*x^2*y-2*x*y+3*y^2);
+end function;
+
+omegay := function(u,v,i)     //third differential form, i denotes index of y
+u:=u+0.000001;
+v:=v+0.000001;
+x:=u+v*I;
+y:=root(u,v,i);
+return y/(-x^3+2*x^2*y-2*x*y+3*y^2);
+end function;
+
+canonicalform:=function(u,v,i)    //the volume form,i denotes index of y
+ort_nor_w1:=0.350487116953118*omega1(u,v,i);
+ort_nor_wy:=(0.358981759779085*omegay(u,v,i)+0.119553875346235*omega1(u,v,i));
+ort_nor_wx:=(0.203008239643111*omega1(u,v,i)-0.216555180015011*omegay(u,v,i)+0.429067210690657*omegax(u,v,i));
+result:=(ort_nor_w1*Conjugate(ort_nor_w1)+ort_nor_wy*Conjugate(ort_nor_wy)+ort_nor_wx*Conjugate(ort_nor_wx))/3;
+return result;
+end function;
+
+ff:=function(u,v)    //compute three i in one time
+result:= Log(theta_wrt_yi(u,v,1))*(canonicalform(u,v,1))+Log(theta_wrt_yi(u,v,2))*(canonicalform(u,v,2))+Log(theta_wrt_yi(u,v,3))*(canonicalform(u,v,3));
+return result;
+end function;
+
+SX:=0;    //take Riemann sum
+scale:=0.01;
+rex_start:=-10;
+imx_start:=-10;
+for p in [1..200] do
+for q in [1..2000] do
+SX:=SX+ff(p*scale+rex_start+0.005,q*scale+imx_start+0.005)*scale*scale*(-9);
+end for;
+end for;
+SXn10:=SX;
+SXn10;
