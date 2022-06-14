@@ -1,0 +1,159 @@
+C<I> := ComplexField(50);    //we need high precision here, since components of T(X) can be very small
+Cxy<x, y> := PolynomialRing(RationalField(), 2);
+f := -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x;    //defining polynomial
+X := RiemannSurface(f : Precision:=15);    //create riemann surface
+tau:=SmallPeriodMatrix(X);
+
+MatrixIm := function(M)    //function to take the imaginary part of a matrix with entries in the field C defined just above. 
+N := ZeroMatrix(C, Nrows(M), Ncols(M));
+for i in [1..Nrows(M)] do
+for j in [1..Ncols(M)] do
+N[i,j] := Imaginary(M[i,j]);
+end for;
+end for;
+return N;
+end function;
+
+Imtau:=MatrixIm(tau);
+detimtau:=Determinant(Imtau);
+ThetaTranslate:=Matrix([[0.479250542651680186758281300774 - 0.00334176833187451614116524746349*I],
+[0.698684877508432322290935180841 + 0.199495723882563563098727841525*I],
+[0.00722266620787249384535143960054 - 0.0430102069343208149623250436805*I]]);
+
+normalizedtheta := function(D);    // ||theta||_{g-1}
+P := AbelJacobi(D);
+myinput := Matrix(P) - ThetaTranslate;
+char:=Matrix([[0],[0],[0],[0],[0],[0]]);
+myabstheta:=Abs(Theta(char, myinput, tau));
+myiminput:= MatrixIm(myinput);
+myexponent:=-3.141592653589*Transpose(myiminput)*(Imtau^-1)*myiminput;
+return Abs(Exp(myexponent[1,1])*myabstheta*detimtau^(1/4));
+end function;
+
+a:=1;    //the following lines are the coefficient of the defining polynomial in y
+b:=x^2-x;
+c:=-x^3;
+d:=x^2+x;
+cubic_unit:=-1/2+3^(1/2)/2*I;
+
+root:=function(u,v,i);    //solve equation with coefficients a,b,c,d
+numa:=a;
+numb:=Evaluate(b,[u+v*I,0]);
+numc:=Evaluate(c,[u+v*I,0]);
+preuu:=(9*a*b*c-27*a^2*d-2*b^3)/(54*a^3);
+uu:=Evaluate(preuu,[u+v*I,0]);
+prevv:=Evaluate((3*(4*a*c^3-b^2*c^2-18*a*b*c*d+27*a^2*d^2+4*b^3*d)),[u+v*I,0]);
+vv:=(prevv^(1/2))/(18*a^2);
+m:=(uu-vv)^(1/3);
+if Abs(uu+vv) ge Abs(uu-vv) then
+m:=(uu+vv)^(1/3);
+end if;
+n:=0;
+if m ne 0 then
+n:=(numb^2-3*numa*numc)/(9*numa*m);
+end if;
+result:=(cubic_unit^(i-1))*m+n*cubic_unit^(2*i-2)-(numb)/(3*numa);
+return result;
+end function;
+
+wronskisquare:=function(x,y)
+fy:=-x^3+2*x^2*y-2*x*y+3*y^2;    //partial derivative of defining polynomial wrt y
+dy:=(3*x^2*y-2*x*y^2+y^2-2*x-1)/(-x^3+2*x^2*y-2*x*y+3*y^2);    //implicit derivative of y wrt x
+ddy:=(6*x*y+3*x^2*dy+3*x^2*dy-2*y^2-4*x*y*dy-4*x*y*dy-2*x^2*dy^2+2*y*dy+2*y*dy+2*x*dy^2-6*y*dy^2-2)/(-x^3+2*x^2*y-2*x*y+3*y^2);    //second derivative
+dfy:=-3*x^2+4*x*y+2*x^2*dy-2*y-2*x*dy+6*y*dy;    //implicit derivative of fy wrt x
+ddfy:=-6*x+4*y+4*x*dy+4*x*dy+2*x^2*ddy-2*dy-2*dy-2*x*ddy+6*dy^2+6*y*ddy;    //second derivative
+w1:=1/fy;    //differential forms
+wy:=y/fy;
+wx:=x/fy;
+dw1:=-dfy/fy^2;    //implicit derivative of w1 wrt x
+dwy:=(dy*fy-dfy*y)/(fy^2);
+dwx:=(fy-x*dfy)/(fy^2);
+ddw1:=-(ddfy*fy^2-2*fy*dfy^2)/(fy^4);    //second derivative
+ddwy:=((ddy*fy+dy*dfy-ddfy*y-dfy*dy)*fy^2-2*fy*dfy*(dy*fy-dfy*y))/(fy^4);
+ddwx:=((dfy-dfy-x*ddfy)*fy^2-2*fy*dfy*(fy-x*dfy))/(fy^4);
+c11:=0.350487116953118;    //orthogonalizing matrix
+c21:=0.119553875346235;
+c22:=0.358981759779085;
+c31:=0.203008239643111;
+c32:=-0.216555180015011;
+c33:=0.429067210690657;
+W11:=c11*w1;    //following lines gives the wronskian matrix wrt a orthonormal basis of differential form.
+W12:=c21*w1+c22*wy;
+W13:=c31*w1+c32*wy+c33*wx;
+W21:=c11*dw1;
+W22:=c21*dw1+c22*dwy;
+W23:=c31*dw1+c32*dwy+c33*dwx;
+W31:=c11*ddw1;
+W32:=c21*ddw1+c22*ddwy;
+W33:=c31*ddw1+c32*ddwy+c33*ddwx;
+Wronski:=Matrix([[W11,W12,W13],[W21,W22,W23],[W31/2,W32/2,W33/2]]);
+detwro:=Abs(Determinant(Wronski));
+return detwro^2;
+end function;
+
+embedding:=function(u,v,i);    //this gives the embedding index of point (u+v*I,y_i) on \cC  implemented in Magma
+zz,pt1:=IsPoint(X,<[u,v],1>);
+zz,pt2:=IsPoint(X,<[u,v],2>);
+zz,pt3:=IsPoint(X,<[u,v],3>);
+if (Abs(Coordinates(pt1)[2]-root(u,v,i)) le 0.01) then result:=1; 
+elif (Abs(Coordinates(pt2)[2]-root(u,v,i)) le 0.01) then result:=2;
+elif (Abs(Coordinates(pt3)[2]-root(u,v,i)) le 0.01) then result:=3;
+end if;
+return result;
+end function;
+
+WeierPts_coor:=[[ 0, 0], [ -2.104587155963303, -0.3159811807558051], [ (-1.455757161115023 - 1.277524806650578*I), (-0.5258271579143416 - 3.390009274518869*I)], [ (-1.455757161115023 + 1.277524806650578*I), (-0.5258271579143403 + 3.390009274518867*I)], [ -1.95927446954141, -1.410535295372148], [ (1.266455202041324 - 1.31486188027894*I), (0.1352071928093522 + 2.966892634578606*I)], [ (1.266455202041324 + 1.31486188027894*I), (0.1352071928093521 - 2.966892634578606*I)], [ (0.2089717154013823 - 1.59784353074737*I), (0.1450907026008794 - 2.034168656250672*I)], [ (0.2089717154013823 + 1.59784353074737*I), (0.1450907026008798 + 2.034168656250671*I)], [ (-1.31968152920268 - 0.4985373089678906*I), (-0.4698939283630282 - 0.634861971042462*I)], [ (-1.31968152920268 + 0.4985373089678906*I), (-0.4698939283630282 + 0.6348619710424618*I)], [ (1.691125343336006 - 0.6842628628388769*I), (0.6312556990319607 + 0.6046227212351708*I)], [ (1.691125343336006 + 0.6842628628388769*I), (0.6312556990319608 - 0.6046227212351708*I)], [ (-1.125631933711411 - 0.2207052167744392*I), (-0.6596966755302974 + 0.07228789092962729*I)], [ (-1.125631933711411 + 0.2207052167744392*I), (-0.6596966755302974 - 0.07228789092962723*I)], [ (-0.5282412487764151 - 1.005235133687909*I), (-0.4177679368816311 + 0.3210649477940537*I)], [ (-0.5282412487764151 + 1.005235133687909*I), (-0.4177679368816311 - 0.3210649477940537*I)], [ -1.241974125539051, -1.824965132496513], [ 0.3539677313137965, -0.7304015296367112], [ (-0.3349732907033383 - 0.4139797966480703*I), (-0.4206274001987688 - 0.9204898341402288*I)], [ (-0.3349732907033383 + 0.4139797966480703*I), (-0.4206274001987688 + 0.9204898341402289*I)], [ (0.0736668919074069 - 0.3721976723848182*I), (0.7232010036495048 + 0.2545999914748455*I)], [ (0.0736668919074069 + 0.3721976723848182*I), (0.7232010036495049 - 0.2545999914748455*I)], [ -1, 0]];
+WeierPts:=[];
+
+for i in WeierPts_coor do    //make a lst of Wpoints from coordinates
+zz,pt1:=IsPoint(X,<[Re(i[1]),Im(i[1])],1>);
+zz,pt2:=IsPoint(X,<[Re(i[1]),Im(i[1])],2>);
+zz,pt3:=IsPoint(X,<[Re(i[1]),Im(i[1])],3>);
+if (Abs(Coordinates(pt1)[2]-i[2]) le 0.0001) then embed:=1; 
+elif (Abs(Coordinates(pt2)[2]-i[2]) le 0.0001) then embed:=2;
+elif (Abs(Coordinates(pt3)[2]-i[2]) le 0.0001) then embed:=3;
+end if;
+zz, wpt:=IsPoint(X,<[Re(i[1]),Im(i[1])],embed>);
+WeierPts:=Append(WeierPts,wpt);    //the list of W-points
+end for;
+
+Fz:=function(P,n,dire)    //Fz with n the 'distance' scale and dire the relative direction
+
+for i in [1,2,3] do
+rootQ:=root(Re(Coordinates(P)[1]),Im(Coordinates(P)[1]),i);
+if (Abs(rootQ-Coordinates(P)[2]) le 0.01) then    //since Q is close to P, their y-coord are close.
+rinde:=i;    //the index of the y-coordinate for Q
+end if;
+end for;
+
+P_x_r:=Real(Coordinates(P)[1]);
+P_x_i:=Imaginary(Coordinates(P)[1]);
+Q_x_r:=P_x_r+dire[1]*10^(-n);    //real part of the x coordinate of Q
+Q_x_i:=P_x_i+dire[2]*10^(-n);
+
+einde:=embedding(Q_x_r,Q_x_i,rinde); 
+zz,Q:=IsPoint(X,<[Q_x_r,Q_x_i],einde>);
+gPQ:=Divisor([P,Q],[3,-1]);
+distPQ:=Abs(10^(-n)*(dire[1]+dire[2]*I));
+
+result:=normalizedtheta(gPQ)/(distPQ^3);
+return result;
+end function;
+
+TX:=function(P,n,dire) //T(X)
+brick1:=1; 
+for ele in WeierPts do    //theta part
+WDIV:=Divisor([P,ele],[3,-1]);
+brick1:=brick1*Abs(normalizedtheta(WDIV)^(2/27));
+end for;
+brick2:=Fz(P,n,dire)^(-4);
+brick3:=wronskisquare(Coordinates(P)[1],Coordinates(P)[2]);
+result:=brick1*brick2*brick3;
+return result;
+end function;
+
+avWe:=[0.1,0.1];    //avoid Weierstrass point
+dire:=[-1,0];    //initializing direction
+deltapq:=6;    //initializing the 'distance' scale between P and Q
+zz,PointP:=IsPoint(X,<[1+avWe[1],0+avWe[2]],1>);    //initializing the point P
+TX(PointP,deltapq,dire)
