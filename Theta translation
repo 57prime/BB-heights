@@ -1,0 +1,85 @@
+C<I> := ComplexField(30);
+Qxy<x, y> := PolynomialRing(Rationals(), 2);
+f := -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x;    //defining polynomial
+X := RiemannSurface(f);    //create the riemann surface
+tau:=SmallPeriodMatrix(X);
+
+Pt := X ! [0,0];    // a point on X
+Div:=Divisor([Pt],[2]);    //effective divisor of degree 2
+Div2:=Divisor([BasePoint(X)],[2]);
+Div3:=Divisor([BasePoint(X),Pt],[1,1]);
+
+asd := InfinitePoints(X); 
+U:=[asd[1],asd[2],asd[3]];
+V:=[2,1,1];
+CanDiv:=Divisor(U,V);    //canonical divisor
+
+MatrixIm := function(M)    //function to take the imaginary part of a matrix. 
+N := ZeroMatrix(C, Nrows(M), Ncols(M));
+for i in [1..Nrows(M)] do
+for j in [1..Ncols(M)] do
+N[i,j] := Imaginary(M[i,j]);
+end for;
+end for;
+return N;
+end function;
+
+Columns := function(M)    //function to extract columns as a list of matrices
+out := [];
+for i in [1..Ncols(M)] do
+out := out cat [ColumnSubmatrix(M, i, 1)];
+end for;
+return out;
+end function;
+
+char:=Matrix([[0],[0],[0],[0],[0],[0]]);
+Imtau:=MatrixIm(tau);
+detimtau:=Determinant(Imtau);
+LeftPeriod:=RemoveColumn(RemoveColumn(RemoveColumn(BigPeriodMatrix(X),4),4),4);
+ID3 := DiagonalMatrix(C, [1,1,1]);
+columnlist := Columns(ID3) cat Columns(tau); 
+AJCD := Matrix(AbelJacobi(CanDiv));    //the image of canonical divisor under AJ map
+
+AJ_2_torsion := [];
+for v in CartesianPower([0,1], 6) do
+new := ZeroMatrix(C, 3, 1);
+for i in [1..6] do
+new := new + v[i] * columnlist[i];
+end for;
+AJ_2_torsion := AJ_2_torsion cat [(1/2) * new];
+end for;
+
+translates_to_try := [];    //this will be a list of all 64 square roots of CanDiv 
+for V in AJ_2_torsion do
+translates_to_try := translates_to_try cat [(1/2) * AJCD + V];
+end for;
+
+torus_theta_function := function(D)// D is a divisor of degree g-1
+myinput := Matrix(AbelJacobi(D));
+myabstheta:=Abs(Theta(char, myinput, tau));
+myiminput:= MatrixIm(myinput);
+myexponent:=-3.141592653589*Transpose(myiminput)*(Imtau^(-1))*myiminput;
+return Exp(myexponent[1,1])*myabstheta*detimtau^(1/4);
+end function;
+
+find_correct_theta_translate := function(D)    //find out the correct translation
+P := AbelJacobi(D);
+out := [];
+for V in translates_to_try do
+myinput := Matrix(P) - V;
+myabstheta:=Abs(Theta(char, myinput, tau));
+myiminput:= MatrixIm(myinput);
+myexponent:=-3.141592653589*Transpose(myiminput)*(Imtau^(-1))*myiminput;
+if Abs(Exp(myexponent[1,1])*myabstheta*detimtau^(1/4)) le 0.00000001 then    
+return V;
+end if;
+end for;
+end function;
+
+//we check the result by choosing 3 different effective divisors
+ThetaTranslate1 := find_correct_theta_translate(Div); 
+ThetaTranslate1;
+ThetaTranslate2 := find_correct_theta_translate(Div2); 
+ThetaTranslate2;
+ThetaTranslate3 := find_correct_theta_translate(Div3); 
+ThetaTranslate3;
