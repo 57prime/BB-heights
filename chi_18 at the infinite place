@@ -1,0 +1,42 @@
+C<I> := ComplexField(50);
+Qxy<x, y> := PolynomialRing(Rationals(), 2);
+f := -x^3*y+x^2*y^2-x*y^2+y^3+x^2+x;    //defining polynomial
+X := RiemannSurface(f);    //create the riemann surface
+
+tau1:=SmallPeriodMatrix(X);    //period matrix implemented in Magma
+tau2:=Matrix(C,3,[  0.855638485763810 + 1.03033263075936*I, 0.380495294693576 + 0.00436338826915927*I,   0.506949568788359 - 0.178115589372895*I,
+0.380495294693584 + 0.00436338826915617*I ,  0.401072147476828 + 0.694848752465586*I , -0.580339267402228 - 0.147446853346675*I,
+ 0.506949568788374 - 0.178115589372884*I,  -0.580339267402254 - 0.147446853346687*I,   0.219761917471621 + 0.625482641303850*I
+]);    //period matrix implemented in SageMath
+
+//the following set S contains all the even characteristics
+S:=[Matrix(RationalField(),1,[0,0,0,0,0,0]),Matrix(RationalField(),1,[0,0,0,0,0,1]),Matrix(RationalField(),1,[0,0,0,0,1,0]),Matrix(RationalField(),1,[0,0,0,0,1,1]),Matrix(RationalField(),1,[0,0,0,1,0,0]),Matrix(RationalField(),1,[0,0,0,1,0,1]),Matrix(RationalField(),1,[0,0,0,1,1,0]),Matrix(RationalField(),1,[0,0,0,1,1,1]),Matrix(RationalField(),1,[0,0,1,0,0,0]),Matrix(RationalField(),1,[0,0,1,0,1,0]),Matrix(RationalField(),1,[0,0,1,1,0,0]),Matrix(RationalField(),1,[0,0,1,1,1,0]),Matrix(RationalField(),1,[0,1,0,0,0,0]),Matrix(RationalField(),1,[0,1,0,0,0,1]),Matrix(RationalField(),1,[0,1,0,1,0,0]),Matrix(RationalField(),1,[0,1,0,1,0,1]),Matrix(RationalField(),1,[0,1,1,0,0,0]),Matrix(RationalField(),1,[0,1,1,1,0,0]),Matrix(RationalField(),1,[0,1,1,1,1,1]),Matrix(RationalField(),1,[0,1,1,0,1,1]),Matrix(RationalField(),1,[1,0,0,0,0,0]),Matrix(RationalField(),1,[1,0,0,0,0,1]),Matrix(RationalField(),1,[1,0,0,0,1,0]),Matrix(RationalField(),1,[1,0,0,0,1,1]),Matrix(RationalField(),1,[1,0,1,0,0,0]),Matrix(RationalField(),1,[1,0,1,0,1,0]),Matrix(RationalField(),1,[1,0,1,1,0,1]),Matrix(RationalField(),1,[1,0,1,1,1,1]),Matrix(RationalField(),1,[1,1,0,0,0,0]),Matrix(RationalField(),1,[1,1,0,0,0,1]),Matrix(RationalField(),1,[1,1,0,1,1,0]),Matrix(RationalField(),1,[1,1,0,1,1,1]),Matrix(RationalField(),1,[1,1,1,0,0,0]),Matrix(RationalField(),1,[1,1,1,0,1,1]),Matrix(RationalField(),1,[1,1,1,1,1,0]),Matrix(RationalField(),1,[1,1,1,1,0,1])];
+
+MatrixIm := function(M)    //imaginary part of a matrix
+N := ZeroMatrix(C, Nrows(M), Ncols(M));
+for i in [1..Nrows(M)] do
+for j in [1..Ncols(M)] do
+N[i,j] := Imaginary(M[i,j]);
+end for;
+end for;
+return N;
+end function;
+
+compute:=function(period)    //compute ||theta||
+chitilde:=1;
+zerovector:=Matrix(C,1,[0,0,0]);
+for ele in S do
+chitilde:=chitilde*Theta((1/2)*ele,zerovector,period);
+end for;
+abschitilde:=Abs(chitilde);
+Imtau:=MatrixIm(period);
+det:=Determinant(Imtau);
+prepreresult:=Log((det^9)*abschitilde);
+preresult:=26*Log(2)+54*Log(Pi(C))+prepreresult;
+result:=-(21/18)*preresult;    //contribution of \chi_18 at the infinite place
+return result;
+end function;
+
+//we compute the result using two period matrices implemented in Magma and SageMath
+compute(tau1);
+compute(tau2);
